@@ -1,7 +1,8 @@
 <template>
   <header class="header">
     <div class="logo-div" @click="emit('toggle-menu')">
-      <img :src="logoSrc" alt="Logo" />
+      <span v-if="headerTitle" class="header-title">{{ headerTitle }}</span>
+      <img v-else :src="logoSrc" alt="Logo" />
     </div>
     <div class="imagotipe"></div>
   </header>
@@ -12,10 +13,8 @@ import { defineProps, defineEmits } from 'vue'
 
 
 const props = defineProps({
-  logoSrc: {
-    type: String,
-    required: true
-  }
+  logoSrc: { type: String, required: true },
+  headerTitle: { type: String, default: '' }
 })
 
 const emit = defineEmits(['toggle-menu'])
@@ -43,6 +42,14 @@ const emit = defineEmits(['toggle-menu'])
   box-sizing: border-box;
   z-index: 4;
   cursor: pointer; 
+}
+
+.header-title {
+  color: white;
+  font-size: 1.4em;
+  font-family: Arial, sans-serif;
+  letter-spacing: 3px;
+  text-transform: uppercase;
 }
 
 .logo-div {

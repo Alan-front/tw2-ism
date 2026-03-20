@@ -1,6 +1,10 @@
 <template>
   <div class="app-container">
-    <HeaderInitial :logoSrc="logoSrc" @click="toggleMedia"></HeaderInitial>
+    <HeaderInitial
+      :logoSrc="logoSrc"
+      :headerTitle="headerTitle"
+      @click="toggleMedia"
+    />
 
     <div v-if="showMedia" class="menu-oculto">
       <ul class="menu">
@@ -13,7 +17,7 @@
 
     <!-- timeline -->
     <div class="timeline" ref="timeline">
-      <div class="timeline-marker" ref="marker"></div>
+      <div v-if="showMedia" class="timeline-marker" ref="marker"></div>
       <div
         v-for="n in 61"
         :key="n"
@@ -52,7 +56,10 @@
           transform: `translateY(${index * 100 - scrollY * 0.1 + 90}vh)`,
         }"
       >
-        <video autoplay muted loop>
+        <video autoplay muted loop
+  @mouseenter="onMediaEnter(video.title)"
+  @mouseleave="onMediaLeave"
+>
           <source :src="video.url" type="video/mp4" />
         </video>
       </div>
@@ -66,12 +73,15 @@
           transform: `translateY(${(index + videos.length) * 100 - scrollY * 0.1 + 90}vh)`,
         }"
       >
-        <img :src="imagen.url" :alt="imagen.name" />
+        <img :src="imagen.url" :alt="imagen.name"
+  @mouseenter="onMediaEnter(imagen.title)"
+  @mouseleave="onMediaLeave"
+/>
       </div>
     </div>
 
     <!-- timer -->
-    <div v-if="showMedia" class="timer" ref="timer">00:00</div>
+    <div v-if="showMedia" class="timer" ref="timer">00:00:00</div>
 
     <!-- audio oculto -->
     <audio ref="audio" hidden>
@@ -90,7 +100,7 @@ import logoNoFondo from "/src/assets/media_site/logo-no-fondo.png";
 
 const logoSrc = ref(logoImage);
 const showMenu = ref(false);
-const showWelcome = ref(false);
+const showWelcome = ref(true);
 
 const toggleMenu = () => {
   showMenu.value = !showMenu.value;
@@ -103,6 +113,9 @@ const toggleMedia = () => {
   showWelcome.value = true;
 };
 
+const headerTitle = ref("");
+const hoverTitle = ref(false); // ← aquí
+
 const showMedia = ref(false);
 const videos = ref([]);
 const imagenes = ref([]);
@@ -112,6 +125,16 @@ const audio = ref(null);
 const marker = ref(null);
 const timer = ref(null);
 const timeline = ref(null); // 🔹 referencia a la barra
+
+const onMediaEnter = (title) => {
+  hoverTitle.value = true;
+  headerTitle.value = title || '';
+}
+
+const onMediaLeave = () => {
+  hoverTitle.value = false;
+  headerTitle.value = '';
+}
 
 const audioSrc = ref("");
 
@@ -184,6 +207,8 @@ const cargarMedia = async () => {
 
   console.log("Videos cargados:", videos.value.length);
   console.log("Imágenes cargadas:", imagenes.value.length);
+  //log json data for debugging
+  console.log("Media data:", data);
 };
 
 // manejar el scroll con la rueda del mouse
@@ -208,18 +233,25 @@ const actualizarUI = (current) => {
   const percent = (current / audio.value.duration) * 100;
   marker.value.style.left = `${percent}%`;
 
-  const mins = Math.floor(current / 60)
+  const hours = Math.floor(current / 3600);
+  const mins = Math.floor((current % 3600) / 60)
     .toString()
     .padStart(2, "0");
   const secs = Math.floor(current % 60)
     .toString()
     .padStart(2, "0");
-  timer.value.textContent = `${mins}:${secs}`;
+  timer.value.textContent = `${hours.toString().padStart(2, "0")}:${mins}:${secs}`;
 
   // actualizar scrollY para mover imágenes y videos
   const totalMedia = videos.value.length + imagenes.value.length;
   const maxScroll = totalMedia * 1000 + 150;
   scrollY.value = (current / audio.value.duration) * maxScroll;
+
+  // detectar item activo
+  // const allMedia = [...videos.value, ...imagenes.value];
+  // const index = Math.floor(scrollY.value / 1000);
+  // const item = allMedia[index];
+  // headerTitle.value = item?.title || "";
 };
 
 onMounted(() => {
@@ -230,36 +262,16 @@ onMounted(() => {
     actualizarUI(audioEl.currentTime);
   });
 
-  document.addEventListener("wheel", handleScroll);
-});
-
-onMounted(() => {
-  const audioEl = audio.value;
-
-  // actualizar marker + timer
-  audioEl.addEventListener("timeupdate", () => {
-    const current = audioEl.currentTime;
-    const percent = (current / audioEl.duration) * 100;
-    marker.value.style.left = `${percent}%`;
-
-    const minutes = Math.floor(current / 60);
-    const seconds = Math.floor(current % 60)
-      .toString()
-      .padStart(2, "0");
-    timer.value.textContent = `${minutes}:${seconds}`;
-  });
-
-  // 🔁 cuando termine, reinicia todo
   audioEl.addEventListener("ended", () => {
     audioEl.currentTime = 0;
-    audioEl.play(); // vuelve a empezar el audio
-
+    audioEl.play();
     marker.value.style.left = "0%";
-    timer.value.textContent = "00:00";
-    scrollY.value = 0; // reinicia scroll
+    timer.value.textContent = "00:00:00";
+    scrollY.value = 0;
   });
 
-  // 🎯 click en timeline para saltar
+  document.addEventListener("wheel", handleScroll);
+
   if (timeline.value) {
     timeline.value.addEventListener("click", (e) => {
       const rect = timeline.value.getBoundingClientRect();
@@ -268,12 +280,9 @@ onMounted(() => {
 
       if (isNaN(audioEl.duration) || audioEl.duration === 0) return;
 
-      const newTime = percentage * audioEl.duration;
-      audioEl.currentTime = newTime;
-
+      audioEl.currentTime = percentage * audioEl.duration;
       marker.value.style.left = `${percentage * 100}%`;
 
-      // mover scroll en proporción
       const totalMedia = videos.value.length + imagenes.value.length;
       const maxScroll = totalMedia * 1000 + 150;
       scrollY.value = percentage * maxScroll;
@@ -329,20 +338,6 @@ body {
   left: 0%;
   top: 9px;
   transition: left 0.3s ease-out;
-}
-
-.timer {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 10px 20px;
-  border-radius: 5px;
-  font-size: 1.2em;
-  font-family: monospace;
-  z-index: 1000;
 }
 
 .timeline-tick {
@@ -414,39 +409,6 @@ span {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* contenedor de imgenes y videos */
-.images-container {
-  position: absolute;
-  width: 100%;
-  height: 100vh;
-  top: 0;
-  left: 0;
-}
-
-.image-box {
-  position: absolute;
-  width: 100%;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.3s ease;
-}
-
-.image-box img,
-.image-box video {
-  max-width: 80%;
-  max-height: 80%;
-  object-fit: contain;
-  opacity: 0.4;
-  transition: opacity 0.3s ease;
-}
-
-.image-box img:hover,
-.image-box video:hover {
-  opacity: 1;
-}
-
 /* menu oculto */
 
 .menu-oculto {
@@ -510,12 +472,13 @@ span {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0);
   color: white;
   padding: 10px 20px;
   border-radius: 5px;
-  font-size: 1.2em;
-  font-family: monospace;
+  font-size: 2.3em;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 800;
   z-index: 1000;
 }
 
@@ -553,6 +516,6 @@ span {
 .image-box img:hover,
 .image-box video:hover {
   opacity: 1;
-  transform: scale(1.05); /* pequeño zoom al hover */
+  /* transform: scale(1.05);  */
 }
 </style>

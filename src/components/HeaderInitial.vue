@@ -9,19 +9,18 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue'
-
+import { defineProps, defineEmits } from "vue";
 
 const props = defineProps({
   logoSrc: { type: String, required: true },
-  headerTitle: { type: String, default: '' }
-})
+  headerTitle: { type: String, default: "" },
+});
 
-const emit = defineEmits(['toggle-menu'])
+const emit = defineEmits(["toggle-menu"]);
 </script>
 
 <style>
-:root{
+:root {
   --altura-header: 80px;
   --altura-timeline: 60px;
 }
@@ -33,7 +32,7 @@ const emit = defineEmits(['toggle-menu'])
   padding-top: 0px;
   height: var(--altura-header);
   position: fixed;
-  
+
   min-width: 100vw;
   display: flex;
   flex-direction: column;
@@ -41,26 +40,29 @@ const emit = defineEmits(['toggle-menu'])
   justify-content: center;
   box-sizing: border-box;
   z-index: 4;
-  cursor: pointer; 
+  cursor: pointer;
 }
 
 .header-title {
   color: white;
-  font-size: 1.4em;
+  font-size: 2.5em;
+  font-weight: 800;
   font-family: Arial, sans-serif;
   letter-spacing: 3px;
   text-transform: uppercase;
+  transition: opacity .8s ease-in-out;
 }
 
 .logo-div {
   padding: 0;
-  width: 300px;
-  height: 42px;
+  min-width: 80%;
+  height: 48px;
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 5px; 
+  margin-bottom: 5px;
+  
 }
 
 .logo-div img {
@@ -74,7 +76,7 @@ const emit = defineEmits(['toggle-menu'])
   background-color: rgb(12, 12, 12);
   width: 100%;
   position: fixed;
-  top: 80px; 
+  top: 80px;
   left: 0;
   height: 26px;
   display: flex;
@@ -82,7 +84,7 @@ const emit = defineEmits(['toggle-menu'])
   align-items: center;
   transform: translateY(-100%);
   transition: transform 0.3s ease-in-out;
-  z-index: 3; 
+  z-index: 3;
 }
 
 .header:hover ~ .menu-oculto,
@@ -110,6 +112,17 @@ const emit = defineEmits(['toggle-menu'])
   font-weight: bold;
   font-size: 1.1em;
   letter-spacing: 3px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    "Open Sans",
+    "Helvetica Neue",
+    sans-serif;
 }
 </style>

@@ -48,36 +48,58 @@
     <!-- contenedor de media (videos e imagenes) -->
     <div v-if="showMedia" class="images-container" ref="imagesContainer">
       <!-- videos -->
-      <div
-        v-for="(video, index) in videos"
-        :key="`video-${video.name}`"
-        class="image-box"
-        :style="{
-          transform: `translateY(${index * 100 - scrollY * 0.1 + 90}vh)`,
-        }"
-      >
-        <video autoplay muted loop
-  @mouseenter="onMediaEnter(video.title)"
-  @mouseleave="onMediaLeave"
+<div
+  v-for="(video, index) in videos"
+  :key="`video-${video.name}`"
+  class="image-box"
+  :style="{ transform: `translateY(${index * 100 - scrollY * 0.1 + 90}vh)` }"
 >
-          <source :src="video.url" type="video/mp4" />
-        </video>
-      </div>
-
-      <!-- imagenes -->
-      <div
-        v-for="(imagen, index) in imagenes"
-        :key="`imagen-${imagen.name}`"
-        class="image-box"
-        :style="{
-          transform: `translateY(${(index + videos.length) * 100 - scrollY * 0.1 + 90}vh)`,
-        }"
+  <div class="media-wrapper">
+    <a v-if="video.link" :href="video.link" target="_blank" style="display: contents">
+      <video autoplay muted loop
+        @mouseenter="onMediaEnter(video.title)"
+        @mouseleave="onMediaLeave"
       >
-        <img :src="imagen.url" :alt="imagen.name"
-  @mouseenter="onMediaEnter(imagen.title)"
-  @mouseleave="onMediaLeave"
-/>
-      </div>
+        <source :src="video.url" type="video/mp4" />
+      </video>
+    </a>
+    <video v-else autoplay muted loop
+      @mouseenter="onMediaEnter(video.title)"
+      @mouseleave="onMediaLeave"
+    >
+      <source :src="video.url" type="video/mp4" />
+    </video>
+    <div v-if="video.description" class="media-description">
+      {{ video.description }}
+    </div>
+  </div>
+</div>
+
+<!-- imagenes -->
+<div
+  v-for="(imagen, index) in imagenes"
+  :key="`imagen-${imagen.name}`"
+  class="image-box"
+  :style="{ transform: `translateY(${(index + videos.length) * 100 - scrollY * 0.1 + 90}vh)` }"
+>
+  <div class="media-wrapper">
+    <a v-if="imagen.link" :href="imagen.link" target="_blank" style="display: contents">
+      <img :src="imagen.url" :alt="imagen.name"
+        @mouseenter="onMediaEnter(imagen.title)"
+        @mouseleave="onMediaLeave"
+      />
+    </a>
+    <img v-else :src="imagen.url" :alt="imagen.name"
+      @mouseenter="onMediaEnter(imagen.title)"
+      @mouseleave="onMediaLeave"
+    />
+    <div v-if="imagen.description" class="media-description">
+      {{ imagen.description }}
+    </div>
+  </div>
+</div>
+
+      
     </div>
 
     <!-- timer -->
@@ -517,5 +539,54 @@ span {
 .image-box video:hover {
   opacity: 1;
   /* transform: scale(1.05);  */
+}
+
+/* overlay */
+
+.image-box {
+  pointer-events: none;
+}
+
+.image-box img,
+.image-box video {
+  pointer-events: all;
+}
+.media-wrapper {
+  position: relative;
+  max-width: 80%;
+  max-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+}
+
+.media-wrapper img,
+.media-wrapper video {
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+}
+
+.media-description {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0 0 12px 12px;
+  color: white;
+  padding: 14px 20px;
+  font-size: 0.9em;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.media-wrapper:hover .media-description {
+  opacity: 1;
 }
 </style>

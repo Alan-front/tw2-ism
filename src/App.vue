@@ -48,58 +48,82 @@
     <!-- contenedor de media (videos e imagenes) -->
     <div v-if="showMedia" class="images-container" ref="imagesContainer">
       <!-- videos -->
-<div
-  v-for="(video, index) in videos"
-  :key="`video-${video.name}`"
-  class="image-box"
-  :style="{ transform: `translateY(${index * 100 - scrollY * 0.1 + 90}vh)` }"
->
-  <div class="media-wrapper">
-    <a v-if="video.link" :href="video.link" target="_blank" style="display: contents">
-      <video autoplay muted loop
-        @mouseenter="onMediaEnter(video.title)"
-        @mouseleave="onMediaLeave"
+      <div
+        v-for="(video, index) in videos"
+        :key="`video-${video.name}`"
+        class="image-box"
+        :style="{
+          transform: `translateY(${index * 100 - scrollY * 0.1 + 90}vh)`,
+        }"
       >
-        <source :src="video.url" type="video/mp4" />
-      </video>
-    </a>
-    <video v-else autoplay muted loop
-      @mouseenter="onMediaEnter(video.title)"
-      @mouseleave="onMediaLeave"
-    >
-      <source :src="video.url" type="video/mp4" />
-    </video>
-    <div v-if="video.description" class="media-description">
-      {{ video.description }}
-    </div>
-  </div>
-</div>
+        <div class="media-wrapper">
+          <a
+            v-if="video.link"
+            :href="video.link"
+            target="_blank"
+            style="display: contents"
+          >
+            <video
+              autoplay
+              muted
+              loop
+              @mouseenter="onMediaEnter(video.title)"
+              @mouseleave="onMediaLeave"
+            >
+              <source :src="video.url" type="video/mp4" />
+            </video>
+          </a>
+          <video
+            v-else
+            autoplay
+            muted
+            loop
+            @mouseenter="onMediaEnter(video.title)"
+            @mouseleave="onMediaLeave"
+          >
+            <source :src="video.url" type="video/mp4" />
+          </video>
+          <div v-if="video.description" class="media-description">
+            {{ video.description }}
+          </div>
+        </div>
+      </div>
 
-<!-- imagenes -->
-<div
-  v-for="(imagen, index) in imagenes"
-  :key="`imagen-${imagen.name}`"
-  class="image-box"
-  :style="{ transform: `translateY(${(index + videos.length) * 100 - scrollY * 0.1 + 90}vh)` }"
->
-  <div class="media-wrapper">
-    <a v-if="imagen.link" :href="imagen.link" target="_blank" style="display: contents">
-      <img :src="imagen.url" :alt="imagen.name"
-        @mouseenter="onMediaEnter(imagen.title)"
-        @mouseleave="onMediaLeave"
-      />
-    </a>
-    <img v-else :src="imagen.url" :alt="imagen.name"
-      @mouseenter="onMediaEnter(imagen.title)"
-      @mouseleave="onMediaLeave"
-    />
-    <div v-if="imagen.description" class="media-description">
-      {{ imagen.description }}
-    </div>
-  </div>
-</div>
-
-      
+      <!-- imagenes -->
+      <div
+        v-for="(imagen, index) in imagenes"
+        :key="`imagen-${imagen.name}`"
+        class="image-box"
+        :style="{
+          transform: `translateY(${(index + videos.length) * 100 - scrollY * 0.1 + 90}vh)`,
+        }"
+      >
+        <div class="media-wrapper">
+          <a
+            v-if="imagen.link"
+            :href="imagen.link"
+            target="_blank"
+            style="display: contents"
+          >
+            <img
+              :src="imagen.url"
+              :alt="imagen.name"
+              @mouseenter="onMediaEnter(imagen.title)"
+              @mouseleave="onMediaLeave"
+            />
+          </a>
+          <img
+            v-else
+            :src="imagen.url"
+            :alt="imagen.name"
+            @mouseenter="onMediaEnter(imagen.title)"
+            @mouseleave="onMediaLeave"
+          />
+          <div v-if="imagen.description" class="media-description">
+            {{ imagen.description }}
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- timer -->
@@ -120,9 +144,12 @@ import HeaderInitial from "./components/HeaderInitial.vue";
 import logoImage from "/src/assets/media_site/logo-web.png";
 import logoNoFondo from "/src/assets/media_site/logo-no-fondo.png";
 
+const API_BASE = import.meta.env.VITE_API_BASE;
+const UPLOADS_BASE = import.meta.env.VITE_UPLOADS_BASE;
+
 const logoSrc = ref(logoImage);
 const showMenu = ref(false);
-const showWelcome = ref(true);
+const showWelcome = ref(false);
 
 const toggleMenu = () => {
   showMenu.value = !showMenu.value;
@@ -150,18 +177,18 @@ const timeline = ref(null); // 🔹 referencia a la barra
 
 const onMediaEnter = (title) => {
   hoverTitle.value = true;
-  headerTitle.value = title || '';
-}
+  headerTitle.value = title || "";
+};
 
 const onMediaLeave = () => {
   hoverTitle.value = false;
-  headerTitle.value = '';
-}
+  headerTitle.value = "";
+};
 
 const audioSrc = ref("");
 
 const cargarAudio = async () => {
-  const res = await fetch("http://localhost/tw2ism-admin/api/get_audio.php");
+  const res = await fetch(`${API_BASE}/get_audio.php`);
   const data = await res.json();
   console.log("Audio data:", data);
   if (data.success) {
@@ -176,8 +203,10 @@ const toggleScroll = async () => {
   showWelcome.value = false;
   showMedia.value = true;
 
-  await cargarAudio();
+  // await cargarAudio();
   await cargarMedia();
+
+  audio.value.src = "/assets/00100101-DZdFaXZi.mp3";
 
   audio.value.load();
   audio.value.play().catch((err) => console.log("Autoplay bloqueado:", err));
@@ -211,14 +240,14 @@ const toggleScroll = async () => {
 // };
 
 const cargarMedia = async () => {
-  const res = await fetch("http://localhost/tw2ism-admin/api/media.php");
+  const res = await fetch(`${API_BASE}/media.php`);
   const data = await res.json();
 
   videos.value = [];
   imagenes.value = [];
 
   data.items.forEach((item) => {
-    const url = `http://localhost/tw2ism-admin/uploads/media_scroll/${item.filename}`;
+    const url = `${UPLOADS_BASE}/${item.filename}`;
 
     if (item.type === "video") {
       videos.value.push({ ...item, url });
@@ -292,7 +321,7 @@ onMounted(() => {
     scrollY.value = 0;
   });
 
-  document.addEventListener("wheel", handleScroll);
+  document.addEventListener("wheel", handleScroll, { passive: false });
 
   if (timeline.value) {
     timeline.value.addEventListener("click", (e) => {
@@ -558,7 +587,6 @@ span {
   display: flex;
   align-items: center;
   justify-content: center;
-  
 }
 
 .media-wrapper img,

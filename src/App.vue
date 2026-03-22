@@ -132,7 +132,7 @@
     <!-- audio oculto -->
     <audio ref="audio" hidden>
       <!-- <source src="@/assets/media_audios/kashmir.mp3" type="audio/mpeg" /> -->
-      <source src="@/assets/media_audios/00100101.mp3" type="audio/mpeg" />
+
       <!-- <source :src="audioSrc" /> -->
     </audio>
   </div>
@@ -192,21 +192,18 @@ const cargarAudio = async () => {
   const data = await res.json();
   console.log("Audio data:", data);
   if (data.success) {
-    audioSrc.value = data.audio_url;
-    console.log("Audio URL:", audioSrc.value);
+    audio.value.src = data.audio_url;
+    console.log("Audio URL:", audioSrc.value); // ← está logueando audioSrc no audio.value.src
   }
 };
 
 // funcion para agregar toggleScroll
 const toggleScroll = async () => {
-  console.log("Toggle scroll clicked");
   showWelcome.value = false;
   showMedia.value = true;
 
-  // await cargarAudio();
+  await cargarAudio();
   await cargarMedia();
-
-  audio.value.src = "/assets/00100101-DZdFaXZi.mp3";
 
   audio.value.load();
   audio.value.play().catch((err) => console.log("Autoplay bloqueado:", err));

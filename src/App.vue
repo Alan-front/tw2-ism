@@ -54,15 +54,13 @@
         class="image-box"
         :style="{
           transform: `translateY(${index * 100 - scrollY * 0.1 + 90}vh)`,
+          backgroundImage: video.background ? `url(${video.background})` : 'none',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
         }"
       >
         <div class="media-wrapper">
-          <a
-            v-if="video.link"
-            :href="video.link"
-            target="_blank"
-            style="display: contents"
-          >
+          <a :href="video.url" target="_blank" style="display: contents">
             <video
               autoplay
               muted
@@ -70,19 +68,9 @@
               @mouseenter="onMediaEnter(video.title)"
               @mouseleave="onMediaLeave"
             >
-              <source :src="video.url" type="video/mp4" />
+              <source :src="video.file" type="video/mp4" />
             </video>
           </a>
-          <video
-            v-else
-            autoplay
-            muted
-            loop
-            @mouseenter="onMediaEnter(video.title)"
-            @mouseleave="onMediaLeave"
-          >
-            <source :src="video.url" type="video/mp4" />
-          </video>
           <div v-if="video.description" class="media-description">
             {{ video.description }}
           </div>
@@ -96,29 +84,32 @@
         class="image-box"
         :style="{
           transform: `translateY(${(index + videos.length) * 100 - scrollY * 0.1 + 90}vh)`,
+          backgroundImage: imagen.background ? `url(${imagen.background})` : 'none',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
         }"
       >
         <div class="media-wrapper">
           <a
-            v-if="imagen.link"
-            :href="imagen.link"
-            target="_blank"
-            style="display: contents"
-          >
-            <img
-              :src="imagen.url"
-              :alt="imagen.name"
-              @mouseenter="onMediaEnter(imagen.title)"
-              @mouseleave="onMediaLeave"
-            />
-          </a>
-          <img
-            v-else
-            :src="imagen.url"
-            :alt="imagen.name"
-            @mouseenter="onMediaEnter(imagen.title)"
-            @mouseleave="onMediaLeave"
-          />
+            v-if="imagen.url"
+  :href="imagen.url"
+  target="_blank"
+  style="display: contents"
+>
+  <img
+    :src="imagen.file"
+    :alt="imagen.name"
+    @mouseenter="onMediaEnter(imagen.title)"
+    @mouseleave="onMediaLeave"
+  />
+</a>
+<img
+  v-else
+  :src="imagen.file"
+  :alt="imagen.name"
+  @mouseenter="onMediaEnter(imagen.title)"
+  @mouseleave="onMediaLeave"
+/>
           <div v-if="imagen.description" class="media-description">
             {{ imagen.description }}
           </div>
@@ -130,11 +121,7 @@
     <div v-if="showMedia" class="timer" ref="timer">00:00:00</div>
 
     <!-- audio oculto -->
-    <audio ref="audio" hidden>
-      <!-- <source src="@/assets/media_audios/kashmir.mp3" type="audio/mpeg" /> -->
-
-      <!-- <source :src="audioSrc" /> -->
-    </audio>
+    <audio ref="audio" hidden></audio>
   </div>
 </template>
 
@@ -243,20 +230,36 @@ const cargarMedia = async () => {
   videos.value = [];
   imagenes.value = [];
 
-  data.items.forEach((item) => {
-    const url = `${UPLOADS_BASE}/${item.filename}`;
+  data.slides.forEach((slide) => {
+    slide.elementos.forEach((item) => {
 
-    if (item.type === "video") {
-      videos.value.push({ ...item, url });
-    } else {
-      imagenes.value.push({ ...item, url });
-    }
+      const file = `${UPLOADS_BASE}/${item.filename}`;
+      
+      const url = item.url || null;
+
+      const enriched = {
+        ...item,
+        url,
+        file,
+        slide_id: slide.id,
+        background: slide.background ? `${UPLOADS_BASE}/${slide.background}` : null,
+        
+      };
+      //console log background
+      console.log("Background:", enriched.background);
+
+
+      if (item.type === "video") {
+        videos.value.push(enriched);
+      } else {
+        imagenes.value.push(enriched);
+      }
+    });
   });
 
   console.log("Videos cargados:", videos.value.length);
   console.log("Imágenes cargadas:", imagenes.value.length);
-  //log json data for debugging
-  console.log("Media data:", data);
+  console.log("Slides data:", data);
 };
 
 // manejar el scroll con la rueda del mouse
@@ -548,6 +551,7 @@ span {
   align-items: center;
   justify-content: center;
   transition: transform 0.6s ease-out; /* suaviza el movimiento */
+  border: 2px solid green;
 }
 
 .image-box img,

@@ -45,73 +45,76 @@
       </div>
     </div>
 
-    <!-- contenedor de media (videos e imagenes) -->
+    <!-- contenedor de slides -->
     <div v-if="showMedia" class="images-container" ref="imagesContainer">
-      <!-- videos -->
       <div
-        v-for="(video, index) in videos"
-        :key="`video-${video.name}`"
+        v-for="(slide, index) in slides"
+        :key="slide.id"
         class="image-box"
         :style="{
-          transform: `translateY(${index * 100 - scrollY * 0.1 + 90}vh)`,
-          backgroundImage: video.background ? `url(${video.background})` : 'none',
-  backgroundSize: 'cover',
-  backgroundPosition: 'center',
+          transform: `translateY(${index * 1 - scrollY * 0.1 + 90}vh)`,
+          height: slide.height_vh + 'vh',
+          backgroundImage: slide.backgroundUrl
+            ? `url(${slide.backgroundUrl})`
+            : 'none',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
         }"
       >
-        <div class="media-wrapper">
-          <a :href="video.url" target="_blank" style="display: contents">
-            <video
-              autoplay
-              muted
-              loop
-              @mouseenter="onMediaEnter(video.title)"
-              @mouseleave="onMediaLeave"
-            >
-              <source :src="video.file" type="video/mp4" />
-            </video>
-          </a>
-          <div v-if="video.description" class="media-description">
-            {{ video.description }}
-          </div>
-        </div>
-      </div>
-
-      <!-- imagenes -->
-      <div
-        v-for="(imagen, index) in imagenes"
-        :key="`imagen-${imagen.name}`"
-        class="image-box"
-        :style="{
-          transform: `translateY(${(index + videos.length) * 100 - scrollY * 0.1 + 90}vh)`,
-          backgroundImage: imagen.background ? `url(${imagen.background})` : 'none',
-  backgroundSize: 'cover',
-  backgroundPosition: 'center',
-        }"
-      >
-        <div class="media-wrapper">
+      <div v-if="isDev" class="dev-orden">{{ slide.orden }}</div>
+        <div
+          v-for="el in slide.elementos"
+          :key="el.id"
+          class="elemento"
+          :style="{
+            left: el.pos_x + '%',
+            top: el.pos_y + '%',
+            width: el.width + '%',
+            transform: `rotate(${el.rotation}deg)`,
+            zIndex: el.z_index,
+          }"
+        >
           <a
-            v-if="imagen.url"
-  :href="imagen.url"
-  target="_blank"
-  style="display: contents"
->
-  <img
-    :src="imagen.file"
-    :alt="imagen.name"
-    @mouseenter="onMediaEnter(imagen.title)"
-    @mouseleave="onMediaLeave"
-  />
-</a>
-<img
-  v-else
-  :src="imagen.file"
-  :alt="imagen.name"
-  @mouseenter="onMediaEnter(imagen.title)"
-  @mouseleave="onMediaLeave"
-/>
-          <div v-if="imagen.description" class="media-description">
-            {{ imagen.description }}
+            v-if="el.url"
+            :href="el.url"
+            target="_blank"
+            style="display: contents"
+          >
+            <img
+              v-if="el.type === 'image' || el.type === 'gif'"
+              :src="el.fileUrl"
+              @mouseenter="onMediaEnter(el.title)"
+              @mouseleave="onMediaLeave"
+            />
+            <video
+              v-else-if="el.type === 'video'"
+              :src="el.fileUrl"
+              autoplay
+              loop
+              :muted="!el.sound_enabled"
+              @mouseenter="onMediaEnter(el.title)"
+              @mouseleave="onMediaLeave"
+            />
+          </a>
+          <template v-else>
+            <img
+              v-if="el.type === 'image' || el.type === 'gif'"
+              :src="el.fileUrl"
+              @mouseenter="onMediaEnter(el.title)"
+              @mouseleave="onMediaLeave"
+            />
+            <video
+              v-else-if="el.type === 'video'"
+              :src="el.fileUrl"
+              autoplay
+              loop
+              :muted="!el.sound_enabled"
+              @mouseenter="onMediaEnter(el.title)"
+              @mouseleave="onMediaLeave"
+            />
+          </template>
+          <div v-if="el.description" class="media-description">
+            {{ el.description }}
           </div>
         </div>
       </div>
@@ -138,29 +141,29 @@ const logoSrc = ref(logoImage);
 const showMenu = ref(false);
 const showWelcome = ref(false);
 
+const isDev = import.meta.env.DEV
+
 const toggleMenu = () => {
   showMenu.value = !showMenu.value;
 };
 
 const toggleMedia = () => {
   if (showMedia.value) return;
-
   logoSrc.value = logoNoFondo;
   showWelcome.value = true;
 };
 
 const headerTitle = ref("");
-const hoverTitle = ref(false); // ← aquí
+const hoverTitle = ref(false);
 
 const showMedia = ref(false);
-const videos = ref([]);
-const imagenes = ref([]);
+const slides = ref([]);
 const scrollY = ref(0);
 
 const audio = ref(null);
 const marker = ref(null);
 const timer = ref(null);
-const timeline = ref(null); // 🔹 referencia a la barra
+const timeline = ref(null);
 
 const onMediaEnter = (title) => {
   hoverTitle.value = true;
@@ -180,11 +183,10 @@ const cargarAudio = async () => {
   console.log("Audio data:", data);
   if (data.success) {
     audio.value.src = data.audio_url;
-    console.log("Audio URL:", audioSrc.value); // ← está logueando audioSrc no audio.value.src
+    console.log("Audio URL:", audioSrc.value);
   }
 };
 
-// funcion para agregar toggleScroll
 const toggleScroll = async () => {
   showWelcome.value = false;
   showMedia.value = true;
@@ -196,78 +198,29 @@ const toggleScroll = async () => {
   audio.value.play().catch((err) => console.log("Autoplay bloqueado:", err));
 };
 
-// cargar videos e imagenes escaneando directorio GLOB
-// const cargarMedia = async () => {
-//   const archivos = import.meta.glob("/src/assets/media_scroll/*");
-
-//   videos.value = [];
-//   imagenes.value = [];
-
-//   for (const ruta in archivos) {
-//     const nombre = ruta.split("/").pop();
-
-//     if (nombre.endsWith(".mp4")) {
-//       videos.value.push({
-//         name: nombre,
-//         url: ruta,
-//       });
-//     } else if (nombre.endsWith(".jpg") || nombre.endsWith(".png")) {
-//       imagenes.value.push({
-//         name: nombre,
-//         url: ruta,
-//       });
-//     }
-//   }
-
-//   console.log("Videos cargados:", videos.value.length);
-//   console.log("Imágenes cargadas:", imagenes.value.length);
-// };
-
 const cargarMedia = async () => {
   const res = await fetch(`${API_BASE}/media.php`);
   const data = await res.json();
 
-  videos.value = [];
-  imagenes.value = [];
+  slides.value = data.slides.map((slide) => ({
+    ...slide,
+    backgroundUrl: slide.background
+      ? `${UPLOADS_BASE}/${slide.background}`
+      : null,
+    elementos: slide.elementos.map((el) => ({
+      ...el,
+      fileUrl: `${UPLOADS_BASE}/${el.filename}`,
+    })),
+  }));
 
-  data.slides.forEach((slide) => {
-    slide.elementos.forEach((item) => {
-
-      const file = `${UPLOADS_BASE}/${item.filename}`;
-      
-      const url = item.url || null;
-
-      const enriched = {
-        ...item,
-        url,
-        file,
-        slide_id: slide.id,
-        background: slide.background ? `${UPLOADS_BASE}/${slide.background}` : null,
-        
-      };
-      //console log background
-      console.log("Background:", enriched.background);
-
-
-      if (item.type === "video") {
-        videos.value.push(enriched);
-      } else {
-        imagenes.value.push(enriched);
-      }
-    });
-  });
-
-  console.log("Videos cargados:", videos.value.length);
-  console.log("Imágenes cargadas:", imagenes.value.length);
-  console.log("Slides data:", data);
+  console.log("Slides cargados:", slides.value.length);
 };
 
-// manejar el scroll con la rueda del mouse
 const handleScroll = (event) => {
   event.preventDefault();
   if (!audio.value) return;
 
-  const delta = event.deltaY > 0 ? 5 : -5; // mover 5 segundos
+  const delta = event.deltaY > 0 ? 5 : -5;
   const newTime = Math.max(
     0,
     Math.min(audio.value.duration, audio.value.currentTime + delta),
@@ -277,7 +230,6 @@ const handleScroll = (event) => {
   actualizarUI(newTime);
 };
 
-// actualizar marker, timer y scrollY en base al tiempo
 const actualizarUI = (current) => {
   if (!audio.value || !marker.value || !timer.value) return;
 
@@ -293,16 +245,9 @@ const actualizarUI = (current) => {
     .padStart(2, "0");
   timer.value.textContent = `${hours.toString().padStart(2, "0")}:${mins}:${secs}`;
 
-  // actualizar scrollY para mover imágenes y videos
-  const totalMedia = videos.value.length + imagenes.value.length;
-  const maxScroll = totalMedia * 1000 + 150;
+  const totalSlides = slides.value.length;
+  const maxScroll = totalSlides * 1000 + 150;
   scrollY.value = (current / audio.value.duration) * maxScroll;
-
-  // detectar item activo
-  // const allMedia = [...videos.value, ...imagenes.value];
-  // const index = Math.floor(scrollY.value / 1000);
-  // const item = allMedia[index];
-  // headerTitle.value = item?.title || "";
 };
 
 onMounted(() => {
@@ -334,8 +279,8 @@ onMounted(() => {
       audioEl.currentTime = percentage * audioEl.duration;
       marker.value.style.left = `${percentage * 100}%`;
 
-      const totalMedia = videos.value.length + imagenes.value.length;
-      const maxScroll = totalMedia * 1000 + 150;
+      const totalSlides = slides.value.length;
+      const maxScroll = totalSlides * 1000 + 150;
       scrollY.value = percentage * maxScroll;
     });
   }
@@ -343,7 +288,7 @@ onMounted(() => {
 </script>
 
 <style>
-/* reset gglobal - debe ir sin scoped */
+/* reset global */
 * {
   margin: 0;
   padding: 0;
@@ -360,7 +305,6 @@ body {
 </style>
 
 <style scoped>
-/* container general */
 .app-container {
   background-color: rgb(0, 0, 0);
   width: 100vw;
@@ -369,7 +313,6 @@ body {
   position: relative;
 }
 
-/* timeline */
 .timeline {
   top: var(--altura-header);
   width: 100%;
@@ -417,7 +360,6 @@ img {
   transition: opacity 0.6s ease;
 }
 
-/* contenedor  welcome */
 .welcome-container {
   position: absolute;
   top: 30vh;
@@ -429,7 +371,6 @@ img {
   background-color: rgba(32, 31, 31, 0.315);
   color: white;
   padding: 20px 0px;
-
   transition:
     opacity 0.8s ease,
     transform 0.8s ease;
@@ -460,11 +401,8 @@ span {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* menu oculto */
-
 .menu-oculto {
   background-color: rgb(12, 12, 12);
-  /* border: 1px solid blue; */
   width: 100%;
   position: fixed;
   top: 80px;
@@ -495,7 +433,6 @@ span {
 
 .menu li {
   display: inline-block;
-  /* margin-bottom: 50px; */
 }
 
 .menu a {
@@ -533,7 +470,6 @@ span {
   z-index: 1000;
 }
 
-/* animacion suave para imagenes y vdeos */
 .images-container {
   position: absolute;
   width: 100%;
@@ -544,57 +480,39 @@ span {
 }
 
 .image-box {
-  position: absolute;
+  position: relative;
   width: 100%;
-  height: 100vh;
-  display: flex;
+  display: block;
+  /* display: flex;
   align-items: center;
-  justify-content: center;
-  transition: transform 0.6s ease-out; /* suaviza el movimiento */
-  border: 2px solid green;
-}
-
-.image-box img,
-.image-box video {
-  max-width: 80%;
-  max-height: 80%;
-  object-fit: contain;
-  opacity: 0.5;
-  transition:
-    opacity 0.6s ease,
-    transform 0.6s ease;
-}
-
-.image-box img:hover,
-.image-box video:hover {
-  opacity: 1;
-  /* transform: scale(1.05);  */
-}
-
-/* overlay */
-
-.image-box {
+  justify-content: center; */
+  transition: transform 0.6s ease-out;
+  /* border-bottom: 2px solid green;
+  border-top: 2px solid red; */
   pointer-events: none;
+  overflow: hidden;
+  
 }
 
-.image-box img,
-.image-box video {
+/* elementos posicionados dentro del slide */
+.elemento {
+  position: absolute;
   pointer-events: all;
 }
-.media-wrapper {
-  position: relative;
-  max-width: 80%;
-  max-height: 80vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+
+.elemento img,
+.elemento video {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  /* opacity: 0.5;
+  transition: opacity 0.6s ease, transform 0.6s ease; */
 }
 
-.media-wrapper img,
-.media-wrapper video {
-  max-width: 100%;
-  max-height: 80vh;
-  object-fit: contain;
+.elemento img:hover,
+.elemento video:hover {
+  /* opacity: 1; */
 }
 
 .media-description {
@@ -615,7 +533,23 @@ span {
   pointer-events: none;
 }
 
-.media-wrapper:hover .media-description {
+.elemento:hover .media-description {
   opacity: 1;
 }
+
+.dev-orden {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 9999;
+  background: red;
+  color: white;
+  font-size: 2rem;
+  font-weight: 900;
+  padding: 4px 12px;
+  border-radius: 4px;
+  pointer-events: none;
+  font-family: monospace;
+}
+
 </style>

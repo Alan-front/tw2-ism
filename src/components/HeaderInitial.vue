@@ -39,7 +39,7 @@ const emit = defineEmits(["toggle-menu"]);
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  z-index: 4;
+  z-index: 400;
   cursor: pointer;
 }
 

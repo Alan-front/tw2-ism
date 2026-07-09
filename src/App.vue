@@ -61,7 +61,7 @@
           backgroundPosition: 'center',
         }"
       >
-      <div v-if="isDev" class="dev-orden">{{ slide.orden }}</div>
+      <div v-if="showOrden" class="dev-orden">{{ slide.orden }}</div>
         <div
           v-for="el in slide.elementos"
           :key="el.id"
@@ -141,7 +141,7 @@ const logoSrc = ref(logoImage);
 const showMenu = ref(false);
 const showWelcome = ref(false);
 
-const isDev = import.meta.env.DEV
+const showOrden = import.meta.env.VITE_SHOW_ORDEN === 'true'
 
 const toggleMenu = () => {
   showMenu.value = !showMenu.value;

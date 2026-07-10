@@ -60,8 +60,8 @@
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }"
+        :ref="(el) => setBoxRef(el, index)"
       >
-      <div v-if="showOrden" class="dev-orden">{{ slide.orden }}</div>
         <div
           v-for="el in slide.elementos"
           :key="el.id"
@@ -120,6 +120,19 @@
       </div>
     </div>
 
+    <!-- overlay de numeros de orden (debug), fuera del contexto transformado -->
+    <div v-if="showOrden" class="orden-overlay">
+      <div
+        v-for="(slide, index) in slides"
+        :key="'orden-' + slide.id"
+        class="dev-orden"
+        :class="{ active: ordenActivo === index }"
+        :style="{ opacity: ordenOpacity[index] || 0 }"
+      >
+        {{ slide.orden }}
+      </div>
+    </div>
+
     <!-- timer -->
     <div v-if="showMedia" class="timer" ref="timer">00:00:00</div>
 
@@ -129,7 +142,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch, nextTick } from "vue";
 import HeaderInitial from "./components/HeaderInitial.vue";
 import logoImage from "/src/assets/media_site/logo-web.png";
 import logoNoFondo from "/src/assets/media_site/logo-no-fondo.png";
@@ -159,6 +172,37 @@ const hoverTitle = ref(false);
 const showMedia = ref(false);
 const slides = ref([]);
 const scrollY = ref(0);
+
+// --- dev-orden: refs a cada image-box + opacidad calculada ---
+const boxRefs = ref([]);
+const ordenOpacity = ref([]);
+const ordenActivo = ref(null);
+
+const setBoxRef = (el, index) => {
+  if (el) boxRefs.value[index] = el;
+};
+
+const updateOrdenVisibility = () => {
+  const vh = window.innerHeight;
+  let bestIndex = null;
+  let bestRatio = 0;
+  const nuevaOpacidad = [];
+
+  boxRefs.value.forEach((el, i) => {
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const visible = Math.min(rect.bottom, vh) - Math.max(rect.top, 0);
+    const ratio = Math.max(0, visible) / vh;
+    nuevaOpacidad[i] = ratio > 0.05 ? Math.min(1, ratio * 1.3) : 0;
+    if (ratio > bestRatio) {
+      bestRatio = ratio;
+      bestIndex = i;
+    }
+  });
+
+  ordenOpacity.value = nuevaOpacidad;
+  ordenActivo.value = bestIndex;
+};
 
 const audio = ref(null);
 const marker = ref(null);
@@ -249,6 +293,10 @@ const actualizarUI = (current) => {
   const maxScroll = totalSlides * 1000 + 150;
   scrollY.value = (current / audio.value.duration) * maxScroll;
 };
+
+watch(scrollY, () => {
+  nextTick(updateOrdenVisibility);
+});
 
 onMounted(() => {
   const audioEl = audio.value;
@@ -537,19 +585,34 @@ span {
   opacity: 1;
 }
 
-.dev-orden {
-  position: absolute;
-  top: 10px;
-  left: 10px;
+.orden-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
   z-index: 9999;
-  background: red;
-  color: white;
+}
+
+.dev-orden {
+  position: fixed;
+  top: 130px;
+  left: 50px;
+  background: rgb(248, 5, 5);
+  color: rgb(223, 216, 216);
   font-size: 2rem;
   font-weight: 900;
   padding: 4px 12px;
   border-radius: 4px;
   pointer-events: none;
   font-family: monospace;
+  transition: opacity 0.2s linear;
+}
+
+.dev-orden.active {
+  background: #f52206;
+  box-shadow: 0 0 16px #e9e391;
 }
 
 </style>

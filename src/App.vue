@@ -52,7 +52,7 @@
         :key="slide.id"
         class="image-box"
         :style="{
-          transform: `translateY(${index * 1 - scrollY * 0.1 + 90}vh)`,
+          transform: `translateY(${slide.offsetTop - scrollY + 90}vh)`,
           height: slide.height_vh + 'vh',
           backgroundImage: slide.backgroundUrl
             ? `url(${slide.backgroundUrl})`
@@ -136,6 +136,26 @@
     <!-- timer -->
     <div v-if="showMedia" class="timer" ref="timer">00:00:00</div>
 
+    <!-- panel de debug de scroll/sync -->
+    <div v-if="showDebug && showMedia" class="debug-panel">
+      <div>slide activa (index): {{ debugInfo.slideActiva }}</div>
+      <div>orden (db): {{ debugInfo.ordenActiva }}</div>
+      <div>scrollY actual: {{ debugInfo.scrollY }} vh</div>
+      <div>offsetTop esperado: {{ debugInfo.offsetEsperado }} vh</div>
+      <div>audio time: {{ debugInfo.audioTime }} s</div>
+      <div>altura total: {{ totalAlturaVh }} vh</div>
+      <div>slides cargadas: {{ slides.length }}</div>
+      <hr style="border-color: #0f0; margin: 4px 0;" />
+      <div style="font-weight: bold;">orden | esperada | real | diff</div>
+      <div
+        v-for="log in slideLog"
+        :key="log.index + '-' + log.real"
+        :style="{ color: log.ok ? '#0f0' : '#f55' }"
+      >
+        {{ log.orden }} | {{ log.esperada }}s | {{ log.real }}s | {{ log.diff }}s
+      </div>
+    </div>
+
     <!-- audio oculto -->
     <audio ref="audio" hidden></audio>
   </div>
@@ -172,6 +192,23 @@ const hoverTitle = ref(false);
 const showMedia = ref(false);
 const slides = ref([]);
 const scrollY = ref(0);
+const totalAlturaVh = ref(0);
+
+// --- debug de scroll/sincronizacion ---
+const showDebug = import.meta.env.VITE_SHOW_DEBUG === 'true';
+const debugInfo = ref({
+  slideActiva: null,
+  ordenActiva: null,
+  scrollY: 0,
+  offsetEsperado: 0,
+  audioTime: 0,
+});
+
+// --- tracking de duracion real vs esperada por slide ---
+const slideLog = ref([]); // historial de las ultimas transiciones
+let slideActualIdx = null;
+let tiempoEntradaReal = null; // Date.now() cuando entro a la slide actual
+let tiempoEntradaAudio = null; // audio.currentTime cuando entro
 
 // --- dev-orden: refs a cada image-box + opacidad calculada ---
 const boxRefs = ref([]);
@@ -218,8 +255,11 @@ const onMediaLeave = () => {
   hoverTitle.value = false;
   headerTitle.value = "";
 };
-
 const audioSrc = ref("");
+
+// import audioSrc from '@/assets/media_audios/00100101.mp3';
+// const audioElio = audioSrc;
+// console.log("y aqui lo vemos Elio", audioElio);
 
 const cargarAudio = async () => {
   const res = await fetch(`${API_BASE}/get_audio.php`);
@@ -229,6 +269,9 @@ const cargarAudio = async () => {
     audio.value.src = data.audio_url;
     console.log("Audio URL:", audioSrc.value);
   }
+
+  // audio.value.src = audioElio;
+  // console.log("esto funciona");
 };
 
 const toggleScroll = async () => {
@@ -246,18 +289,26 @@ const cargarMedia = async () => {
   const res = await fetch(`${API_BASE}/media.php`);
   const data = await res.json();
 
-  slides.value = data.slides.map((slide) => ({
-    ...slide,
-    backgroundUrl: slide.background
-      ? `${UPLOADS_BASE}/${slide.background}`
-      : null,
-    elementos: slide.elementos.map((el) => ({
-      ...el,
-      fileUrl: `${UPLOADS_BASE}/${el.filename}`,
-    })),
-  }));
+  let acumulado = 0;
+  const slidesOrdenadas = [...data.slides].sort((a, b) => a.orden - b.orden);
+  slides.value = slidesOrdenadas.map((slide) => {
+    const offsetTop = acumulado;
+    acumulado += Number(slide.height_vh) || 0;
+    return {
+      ...slide,
+      offsetTop,
+      backgroundUrl: slide.background
+        ? `${UPLOADS_BASE}/${slide.background}`
+        : null,
+      elementos: slide.elementos.map((el) => ({
+        ...el,
+        fileUrl: `${UPLOADS_BASE}/${el.filename}`,
+      })),
+    };
+  });
 
-  console.log("Slides cargados:", slides.value.length);
+  totalAlturaVh.value = acumulado;
+  console.log("Slides cargados:", slides.value.length, "| altura total vh:", acumulado);
 };
 
 const handleScroll = (event) => {
@@ -289,9 +340,49 @@ const actualizarUI = (current) => {
     .padStart(2, "0");
   timer.value.textContent = `${hours.toString().padStart(2, "0")}:${mins}:${secs}`;
 
-  const totalSlides = slides.value.length;
-  const maxScroll = totalSlides * 1000 + 150;
-  scrollY.value = (current / audio.value.duration) * maxScroll;
+  scrollY.value = (current / audio.value.duration) * totalAlturaVh.value;
+
+  if (showDebug) {
+    const idx = slides.value.findIndex(
+      (s) => scrollY.value >= s.offsetTop && scrollY.value < s.offsetTop + Number(s.height_vh)
+    );
+
+    // deteccion de cambio de slide -> cerrar medicion de la anterior
+    if (idx !== slideActualIdx && idx >= 0) {
+      if (slideActualIdx !== null && tiempoEntradaReal !== null) {
+        const s = slides.value[slideActualIdx];
+        const duracionEsperada =
+          (Number(s.height_vh) / totalAlturaVh.value) * audio.value.duration;
+        const duracionReal = (Date.now() - tiempoEntradaReal) / 1000;
+        const diff = duracionReal - duracionEsperada;
+
+        slideLog.value.unshift({
+          orden: s.orden,
+          index: slideActualIdx,
+          esperada: duracionEsperada.toFixed(2),
+          real: duracionReal.toFixed(2),
+          diff: diff.toFixed(2),
+          ok: Math.abs(diff) < 0.5,
+        });
+        if (slideLog.value.length > 8) slideLog.value.pop();
+
+        console.log(
+          `Slide orden=${s.orden}: esperada=${duracionEsperada.toFixed(2)}s | real=${duracionReal.toFixed(2)}s | diff=${diff.toFixed(2)}s`
+        );
+      }
+      slideActualIdx = idx;
+      tiempoEntradaReal = Date.now();
+      tiempoEntradaAudio = current;
+    }
+
+    debugInfo.value = {
+      slideActiva: idx >= 0 ? idx : "fuera de rango",
+      ordenActiva: idx >= 0 ? slides.value[idx].orden : "-",
+      scrollY: scrollY.value.toFixed(1),
+      offsetEsperado: idx >= 0 ? slides.value[idx].offsetTop.toFixed(1) : "-",
+      audioTime: current.toFixed(1),
+    };
+  }
 };
 
 watch(scrollY, () => {
@@ -327,9 +418,7 @@ onMounted(() => {
       audioEl.currentTime = percentage * audioEl.duration;
       marker.value.style.left = `${percentage * 100}%`;
 
-      const totalSlides = slides.value.length;
-      const maxScroll = totalSlides * 1000 + 150;
-      scrollY.value = percentage * maxScroll;
+      scrollY.value = percentage * totalAlturaVh.value;
     });
   }
 });
@@ -528,7 +617,9 @@ span {
 }
 
 .image-box {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   display: block;
   /* display: flex;
@@ -613,6 +704,21 @@ span {
 .dev-orden.active {
   background: #f52206;
   box-shadow: 0 0 16px #e9e391;
+}
+
+.debug-panel {
+  position: fixed;
+  bottom: 90px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #0f0;
+  font-family: monospace;
+  font-size: 0.8rem;
+  padding: 10px 14px;
+  border-radius: 6px;
+  z-index: 10000;
+  line-height: 1.5;
+  pointer-events: none;
 }
 
 </style>

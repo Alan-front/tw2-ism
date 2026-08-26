@@ -21,7 +21,7 @@ const emit = defineEmits(["toggle-menu"]);
 
 <style>
 :root {
-  --altura-header: 80px;
+  --altura-header: 42px;
   --altura-timeline: 60px;
 }
 
@@ -32,8 +32,11 @@ const emit = defineEmits(["toggle-menu"]);
   padding-top: 0px;
   height: var(--altura-header);
   position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
 
-  min-width: 100vw;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -55,8 +58,8 @@ const emit = defineEmits(["toggle-menu"]);
 
 .logo-div {
   padding: 0;
-  min-width: 80%;
-  height: 48px;
+  min-width: 50%;
+  height: 32px;
   cursor: pointer;
   display: flex;
   justify-content: center;
@@ -76,9 +79,10 @@ const emit = defineEmits(["toggle-menu"]);
   background-color: rgb(12, 12, 12);
   width: 100%;
   position: fixed;
-  top: 80px;
+  margin-top: -40px;
   left: 0;
   height: 26px;
+  /* border: 2px solid green; */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -112,17 +116,7 @@ const emit = defineEmits(["toggle-menu"]);
   font-weight: bold;
   font-size: 1.1em;
   letter-spacing: 3px;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    "Open Sans",
-    "Helvetica Neue",
-    sans-serif;
+  font-family: inherit;
+    
 }
 </style>

@@ -8,10 +8,10 @@
 
     <div v-if="showMedia" class="menu-oculto">
       <ul class="menu">
-        <li><a href="#">STORE</a></li>
-        <li><a href="#">TW2ISM</a></li>
-        <li><a href="#">AUDIOGUIDE</a></li>
-        <li><a href="#">MANIFIESTO</a></li>
+        <li><a href="https://tw2ism.com/store/">STORE</a></li>
+<li><a href="https://tw2ism.com/posts/">TW2ISM</a></li>
+<li><a href="https://tw2ism.com/audioguide/">AUDIOGUIDE</a></li>
+<li><a href="https://tw2ism.com/about/">MANIFIESTO</a></li>
       </ul>
     </div>
 
@@ -19,13 +19,13 @@
     <div class="timeline" ref="timeline">
       <div v-if="showMedia" class="timeline-marker" ref="marker"></div>
       <div
-        v-for="n in 61"
+        v-for="n in 101"
         :key="n"
         class="timeline-tick"
         :class="{ major: n % 5 === 1 }"
-        :style="{ left: `${(n - 1) * (100 / 60)}%` }"
+        :style="{ left: `${(n - 1) * (100 / 100)}%` }"
       >
-        <span v-if="n % 5 === 1">{{ (n - 1) * 1 }}</span>
+        <span v-if="n % 5 === 1">{{ String((n - 1) * 1).padStart(2, "0") }}</span>
       </div>
     </div>
 
@@ -38,7 +38,7 @@
           Immerse yourself in a 60-minute sound experience, crafted from sound
           fragments, noise, and music taken from the Twoism archives, selected
           by Damian and Alanise.
-          <span class="start-text" @click="toggleScroll"
+          <span class="start-text"
             >Click here to start . . .</span
           >
         </span>
@@ -46,7 +46,13 @@
     </div>
 
     <!-- contenedor de slides -->
-    <div v-if="showMedia" class="images-container" ref="imagesContainer">
+    <div
+      v-if="showMedia"
+      class="images-container"
+      :class="{ paused: isPaused }"
+      ref="imagesContainer"
+      @click="onEspacioNegativoClick"
+    >
       <div
         v-for="(slide, index) in slides"
         :key="slide.id"
@@ -184,6 +190,19 @@ const toggleMedia = () => {
   if (showMedia.value) return;
   logoSrc.value = logoNoFondo;
   showWelcome.value = true;
+
+  // Se agrega recién en el próximo tick para que este mismo click (el que
+  // abrió el welcome) no dispare también el inicio del scroll. Cualquier
+  // click posterior, en cualquier parte del sitio, lo arranca; y se quita
+  // solo, así el sitio deja de servir como "botón de inicio" una vez usado.
+  setTimeout(() => {
+    document.addEventListener("click", iniciarConCualquierClick);
+  }, 0);
+};
+
+const iniciarConCualquierClick = () => {
+  document.removeEventListener("click", iniciarConCualquierClick);
+  toggleScroll();
 };
 
 const headerTitle = ref("");
@@ -275,6 +294,7 @@ const cargarAudio = async () => {
 };
 
 const toggleScroll = async () => {
+  if (showMedia.value) return;
   showWelcome.value = false;
   showMedia.value = true;
 
@@ -283,6 +303,28 @@ const toggleScroll = async () => {
 
   audio.value.load();
   audio.value.play().catch((err) => console.log("Autoplay bloqueado:", err));
+};
+
+// Click en un espacio "vacío" del slide (sin media encima) pausa el audio
+// y, como el scroll automático depende del timeupdate del audio, con eso
+// también se congela la posición. Click de nuevo, retoma.
+const isPaused = ref(false);
+
+const onEspacioNegativoClick = (event) => {
+  if (event.target.closest(".elemento")) return;
+  if (event.target.closest(".timeline")) return;
+  // franja del header (80px) + timeline (60px): nunca debe pausar acá,
+  // aunque el click caiga justo en el borde
+  if (event.clientY < 140) return;
+  if (!audio.value) return;
+
+  if (audio.value.paused) {
+    audio.value.play().catch((err) => console.log("Play bloqueado:", err));
+    isPaused.value = false;
+  } else {
+    audio.value.pause();
+    isPaused.value = true;
+  }
 };
 
 const cargarMedia = async () => {
@@ -315,7 +357,15 @@ const handleScroll = (event) => {
   event.preventDefault();
   if (!audio.value) return;
 
-  const delta = event.deltaY > 0 ? 5 : -5;
+  // Antes era un salto fijo de 5s por evento, y el trackpad dispara
+  // muchísimos eventos wheel seguidos -> se sentía carrera. Ahora se
+  // escala según la magnitud real del gesto, con un tope por evento
+  // para que ni un scroll fuerte del mouse se sienta brusco.
+  const SENSIBILIDAD = 0.015;
+  const TOPE_POR_EVENTO = 0.6;
+  let delta = event.deltaY * SENSIBILIDAD;
+  delta = Math.max(-TOPE_POR_EVENTO, Math.min(TOPE_POR_EVENTO, delta));
+
   const newTime = Math.max(
     0,
     Math.min(audio.value.duration, audio.value.currentTime + delta),
@@ -464,32 +514,31 @@ body {
 .timeline-marker {
   position: absolute;
   width: 2px;
-  height: 570px;
+  height: 100vh;
   background: red;
   left: 0%;
-  top: 9px;
+  top: -1px;
   transition: left 0.3s ease-out;
 }
 
 .timeline-tick {
   position: absolute;
   top: 10px;
-  width: 3px;
+  width: 1px;
   background: rgb(255, 255, 255);
-  height: 14%;
-  opacity: 0.5;
+  height: 12px;
+  opacity: 0.9;
 }
 
 .timeline-tick.major {
-  height: 0.01%;
   opacity: 1;
 }
 
 .timeline-tick span {
   position: absolute;
-  top: 15px;
-  left: -5px;
-  font-size: 0.65em;
+  top: 18px;
+  left: -6px;
+  font-size: 11px;
   color: rgb(255, 255, 255);
 }
 
@@ -545,6 +594,7 @@ span {
   top: 80px;
   left: 0;
   height: 26px;
+  padding-block: 2px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -578,18 +628,7 @@ span {
   font-weight: bold;
   font-size: 1.1em;
   letter-spacing: 3px;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    "Open Sans",
-    "Helvetica Neue",
-    sans-serif;
+  font-family: arial, Helvetica, sans-serif;
 }
 
 .timer {
@@ -625,7 +664,7 @@ span {
   /* display: flex;
   align-items: center;
   justify-content: center; */
-  transition: transform 0.6s ease-out;
+  transition: none;
   /* border-bottom: 2px solid green;
   border-top: 2px solid red; */
   pointer-events: none;
